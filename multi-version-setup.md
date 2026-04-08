@@ -1,48 +1,31 @@
 # 🧱 Complete Guide: Apache + Docker PHP (Multi-Version)
 
-> ⚠️ **IMPORTANT NOTE**
-> Wherever you see `path` in this guide:
-> 👉 Replace it with your actual project path
+> ⚠️ **IMPORTANT**
+> Replace every `path` with your actual project path
 > Example: `/home/user/my-project`
 
 ---
 
-# 🧠 Architecture
-
-```text
-Browser (localhost:810x)
-        ↓
-Apache (host)
-        ↓
-proxy_fcgi
-        ↓
-Docker PHP-FPM
-        ↓
-path (your project)
-```
-
----
-
-# 📁 Step 1: Prepare Project
+# 📁 1. Create Project Folder
 
 ```bash
 mkdir -p path
-nano path/index.php
 ```
 
-```php
+Create test file:
+
+```bash
+cat <<EOF > path/index.php
 <?php phpinfo();
+EOF
 ```
 
 ---
 
-# 🐳 Step 2: docker-compose.yml
+# 🐳 2. Create docker-compose.yml
 
 ```bash
-nano docker-compose.yml
-```
-
-```yaml
+cat <<EOF > docker-compose.yml
 version: '3.8'
 
 services:
@@ -66,17 +49,18 @@ services:
       - "9103:9000"
     volumes:
       - path:/var/www/html
+EOF
 ```
 
 ---
 
-# 🚀 Step 3: Start Containers
+# 🚀 3. Start Docker
 
 ```bash
 docker compose up -d
 ```
 
-Check:
+Verify:
 
 ```bash
 docker ps
@@ -84,9 +68,7 @@ docker ps
 
 ---
 
-# ⚙️ Step 4: Apache Config
-
-Edit:
+# ⚙️ 4. Update Apache Config
 
 ```bash
 nano ~/apache/conf/httpd.conf
@@ -104,7 +86,7 @@ Listen 8103
 
 ---
 
-## 🔹 Ensure modules
+## 🔹 Ensure modules exist
 
 ```apache
 LoadModule proxy_module /usr/lib/apache2/modules/mod_proxy.so
@@ -113,13 +95,14 @@ LoadModule proxy_fcgi_module /usr/lib/apache2/modules/mod_proxy_fcgi.so
 
 ---
 
-# 🌐 Step 5: VirtualHosts
+# 🌐 5. Create VirtualHost Files
 
 ---
 
 ## 🧾 PHP 7.4
 
-```apache
+```bash
+cat <<EOF > ~/apache/sites-available/php74.conf
 <VirtualHost *:8101>
 
     DocumentRoot "path"
@@ -129,20 +112,22 @@ LoadModule proxy_fcgi_module /usr/lib/apache2/modules/mod_proxy_fcgi.so
         AllowOverride All
     </Directory>
 
-    <FilesMatch \.php$>
+    <FilesMatch \\.php$>
         SetHandler "proxy:fcgi://127.0.0.1:9101"
     </FilesMatch>
 
-    ProxyPassMatch ^/(.*\.php(/.*)?)$ fcgi://127.0.0.1:9101/var/www/html/$1
+    ProxyPassMatch ^/(.*\\.php(/.*)?)$ fcgi://127.0.0.1:9101/var/www/html/\$1
 
 </VirtualHost>
+EOF
 ```
 
 ---
 
 ## 🧾 PHP 8.2
 
-```apache
+```bash
+cat <<EOF > ~/apache/sites-available/php82.conf
 <VirtualHost *:8102>
 
     DocumentRoot "path"
@@ -152,20 +137,22 @@ LoadModule proxy_fcgi_module /usr/lib/apache2/modules/mod_proxy_fcgi.so
         AllowOverride All
     </Directory>
 
-    <FilesMatch \.php$>
+    <FilesMatch \\.php$>
         SetHandler "proxy:fcgi://127.0.0.1:9102"
     </FilesMatch>
 
-    ProxyPassMatch ^/(.*\.php(/.*)?)$ fcgi://127.0.0.1:9102/var/www/html/$1
+    ProxyPassMatch ^/(.*\\.php(/.*)?)$ fcgi://127.0.0.1:9102/var/www/html/\$1
 
 </VirtualHost>
+EOF
 ```
 
 ---
 
 ## 🧾 PHP 8.4
 
-```apache
+```bash
+cat <<EOF > ~/apache/sites-available/php84.conf
 <VirtualHost *:8103>
 
     DocumentRoot "path"
@@ -175,28 +162,29 @@ LoadModule proxy_fcgi_module /usr/lib/apache2/modules/mod_proxy_fcgi.so
         AllowOverride All
     </Directory>
 
-    <FilesMatch \.php$>
+    <FilesMatch \\.php$>
         SetHandler "proxy:fcgi://127.0.0.1:9103"
     </FilesMatch>
 
-    ProxyPassMatch ^/(.*\.php(/.*)?)$ fcgi://127.0.0.1:9103/var/www/html/$1
+    ProxyPassMatch ^/(.*\\.php(/.*)?)$ fcgi://127.0.0.1:9103/var/www/html/\$1
 
 </VirtualHost>
+EOF
 ```
 
 ---
 
-# 🔗 Step 6: Enable Sites
+# 🔗 6. Enable Sites
 
 ```bash
-ln -s ~/apache/sites-available/php74.conf ~/apache/sites-enabled/
-ln -s ~/apache/sites-available/php82.conf ~/apache/sites-enabled/
-ln -s ~/apache/sites-available/php84.conf ~/apache/sites-enabled/
+ln -s ~/apache/sites-available/php74.conf ~/apache/sites-enabled/php74.conf
+ln -s ~/apache/sites-available/php82.conf ~/apache/sites-enabled/php82.conf
+ln -s ~/apache/sites-available/php84.conf ~/apache/sites-enabled/php84.conf
 ```
 
 ---
 
-# 🔁 Step 7: Restart Apache
+# 🔁 7. Restart Apache
 
 ```bash
 apache2 -t -f ~/apache/conf/httpd.conf
@@ -205,7 +193,7 @@ apache2 -f ~/apache/conf/httpd.conf -k restart
 
 ---
 
-# 🌐 Step 8: Access
+# 🌐 8. Open in Browser
 
 * [http://localhost:8101](http://localhost:8101) → PHP 7.4
 * [http://localhost:8102](http://localhost:8102) → PHP 8.2
@@ -213,17 +201,15 @@ apache2 -f ~/apache/conf/httpd.conf -k restart
 
 ---
 
-# 🧪 Step 9: Verify
+# 🧪 9. Verify
 
-```php
-<?php phpinfo();
-```
+You should see different PHP versions on each port.
 
 ---
 
 # 🧠 Key Concepts
 
-### 🔹 Path Mapping
+### 🔹 Path mapping
 
 | Apache | Docker          |
 | ------ | --------------- |
@@ -252,28 +238,31 @@ Browser → Apache → proxy_fcgi → PHP → Response
 
 ### ❌ Primary script unknown
 
-→ Fix `ProxyPassMatch`
+→ Fix with `ProxyPassMatch`
 
 ---
 
 ### ❌ 403 Forbidden
 
-→ Fix `<Directory>` permissions
+```bash
+chmod -R 755 path
+```
 
 ---
 
-### ❌ Connection refused
+### ❌ Containers not running
 
-→ Docker not running
+```bash
+docker compose up -d
+```
 
 ---
 
 # 🔥 Final Result
 
-* One project (`path`)
-* Multiple PHP versions
-* Switch via ports
-* Production-style setup
+* One folder (`path`)
+* 3 PHP versions
+* Switch via port
+* Real production-style setup
 
-
-Just tell me 👍
+---
